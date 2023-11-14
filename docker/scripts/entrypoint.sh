@@ -1,5 +1,10 @@
 #!/bin/bash
 
+TEXT_BANNER=SEAWIND
+
+# Display text banner
+figlet $TEXT_BANNER
+
 # Start virtual X server in the background
 # - DISPLAY default is :99, set in dockerfile
 # - Users can override with `-e DISPLAY=` in `docker run` command to avoid
@@ -15,13 +20,20 @@ if [ -n "${ROS_DISTRO}" ]; then
 	source "/opt/ros/$ROS_DISTRO/setup.bash"
 fi
 
-# Use the LOCAL_USER_ID if passed in at runtime
-if [ -n "${LOCAL_USER_ID}" ]; then
-	echo "Starting with UID : $LOCAL_USER_ID"
-	# modify existing user's id
-	usermod -u $LOCAL_USER_ID user
-	# run as user
-	exec gosu user "$@"
-else
-	exec "$@"
-fi
+# Set start directory to home
+echo "cd /home/$USERNAME" >> /home/$USERNAME/.bashrc
+
+# Add sourcing to shell startup script
+echo "source /opt/ros/$ROS_DISTRO/setup.bash" >> /home/$USERNAME/.bashrc
+
+# Install dependencies 
+# setup/rosdep.sh /home/$USERNAME/$WS_NAME # TODO: this is done every time the container is run, but it really only needs to be done once for setup
+
+# Switch to non-root user
+su $USERNAME
+
+# TODO: can't use '$HOME' as it is '/root' even though the user was changed, 'cd' also doesn't work
+# cd /home/$USERNAME/$WS_NAME 
+
+# Prevent the container from exiting
+/bin/bash "$@"
